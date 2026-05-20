@@ -1,0 +1,8 @@
+{
+  "name": "Sinergi Merdeka",
+  "description": "Platform perencana acara Hari Kemerdekaan Indonesia yang berfokus pada kolaborasi, kebersamaan, dan ide lomba kreatif berbasis AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
