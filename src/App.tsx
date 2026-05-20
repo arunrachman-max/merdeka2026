@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ScoresTabComponent } from './components/ScoresTab';
 import { 
   Users, 
   Flag, 
@@ -497,8 +498,37 @@ const LOMBA_VIDEOS: Record<string, VideoTutorialInfo> = {
   }
 };
 
+interface Team {
+  id: string;
+  name: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  icon: string;
+}
+
+const TEAMS: Team[] = [
+  { id: 'merdeka', name: 'Tim Merdeka', color: 'text-red-700 bg-red-100', bgColor: 'bg-red-50/70', borderColor: 'border-red-200/50', icon: '🔴' },
+  { id: 'garuda', name: 'Tim Garuda', color: 'text-yellow-700 bg-yellow-105', bgColor: 'bg-yellow-50/70', borderColor: 'border-yellow-200/50', icon: '🟡' },
+  { id: 'nusantara', name: 'Tim Nusantara', color: 'text-green-705 bg-green-105', bgColor: 'bg-green-50/70', borderColor: 'border-green-200/50', icon: '🟢' },
+  { id: 'wijaya', name: 'Tim Wijaya', color: 'text-blue-750 bg-blue-105', bgColor: 'bg-blue-50/70', borderColor: 'border-blue-200/50', icon: '🔵' }
+];
+
+const INITIAL_SCORES: Record<string, Record<string, number>> = {
+  "Mewarnai Kanvas Raksasa Pahlawan": { merdeka: 95, garuda: 80, nusantara: 70, wijaya: 85 },
+  "Pencarian Fragmen Puzzle Sejarah": { merdeka: 85, garuda: 90, nusantara: 100, wijaya: 75 },
+  "Tebak Bisik Berantai Gaya Pejuang": { merdeka: 80, garuda: 95, nusantara: 85, wijaya: 90 },
+  "Estafet Atribut Sang Jenderal": { merdeka: 90, garuda: 70, nusantara: 95, wijaya: 80 },
+  "Paduan Ketukan Angklung Supratman": { merdeka: 75, garuda: 100, nusantara: 90, wijaya: 95 },
+  "Labirin Lintasan Trivia Perjuangan": { merdeka: 90, garuda: 85, nusantara: 80, wijaya: 100 },
+  "Menara Penyelamat Bambu Merdeka": { merdeka: 85, garuda: 90, nusantara: 95, wijaya: 70 },
+  "Jembatan Belahan Bambu Kelereng": { merdeka: 100, garuda: 75, nusantara: 85, wijaya: 90 },
+  "Sumbat Paralon Kebocoran Kebangsaan": { merdeka: 90, garuda: 95, nusantara: 75, wijaya: 85 },
+  "Tari Tambang Sumbu Nusantara": { merdeka: 85, garuda: 80, nusantara: 100, wijaya: 90 }
+};
+
 export default function App() {
-  const [activeTab, setActiveTab ] = useState<'brainstorm' | 'plan' | 'about'>('brainstorm');
+  const [activeTab, setActiveTab ] = useState<'brainstorm' | 'plan' | 'scores' | 'about'>('brainstorm');
   const [categoryFilter, setCategoryFilter] = useState<'semua' | 'anak-anak' | 'remaja'>('semua');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -507,9 +537,39 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
+  // Points Management System for Each Competition
+  const [gameScores, setGameScores] = useState<Record<string, Record<string, number>>>(() => {
+    const saved = localStorage.getItem('sinergi_merdeka_scores_v2');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return INITIAL_SCORES;
+  });
+
+  const [activeSimulationTeam, setActiveSimulationTeam] = useState<string>('merdeka');
+
+  const updatePoints = (gameTitle: string, teamId: string, amount: number) => {
+    setGameScores(prev => {
+      const currentScores = prev[gameTitle] || { merdeka: 0, garuda: 0, nusantara: 0, wijaya: 0 };
+      const updated = {
+        ...prev,
+        [gameTitle]: {
+          ...currentScores,
+          [teamId]: Math.max(0, (currentScores[teamId] || 0) + amount)
+        }
+      };
+      localStorage.setItem('sinergi_merdeka_scores_v2', JSON.stringify(updated));
+      return updated;
+    });
+  };
+  
   // Selected Game for Interactive Details Simulator
   const [selectedGame, setSelectedGame] = useState<LombaIdea | null>(null);
-  const [modalTab, setModalTab] = useState<'simulasi' | 'video'>('video');
+  const [modalTab, setModalTab] = useState<'simulasi' | 'video' | 'skor'>('video');
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedNotification, setCopiedNotification] = useState(false);
 
@@ -790,6 +850,50 @@ export default function App() {
     }
   };
 
+  const getLeaderboardShareText = () => {
+    const teamTotals = TEAMS.map(t => {
+      const score = Object.values(gameScores).reduce((sum: number, g: Record<string, number>) => sum + (g[t.id] || 0), 0);
+      return { ...t, score };
+    }).sort((a, b) => (b.score as number) - (a.score as number));
+
+    const standings = teamTotals.map((t, idx) => {
+      return `${idx + 1}. [${t.icon} ${t.name}] — ${t.score} Poin`;
+    }).join('\n');
+    
+    return `🏆 🇮🇩 KLASEMEN SEMENTARA SINERGI MERDEKA RW 08 🇮🇩 🏆\n\nHalo warga! Berikut adalah perolehan Poin Sinergi tim dalam kompetisi Agustusan RW 08 saat ini:\n\n${standings}\n\nMari kita terus semarakkan kemerdekaan dengan gotong royong dan suka cita! NKRI Harga Mati! 🎉💪🇮🇩\nPantau klasemen terbaru selengkapnya di: ${window.location.href}`;
+  };
+
+  const handleCopyScoresToClipboard = () => {
+    const textToCopy = getLeaderboardShareText();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+          setCopiedNotification(true);
+          setTimeout(() => setCopiedNotification(false), 2000);
+        })
+        .catch((err) => {
+          console.error('Failed to copy text: ', err);
+        });
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = textToCopy;
+      textArea.style.position = "fixed";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          setCopiedNotification(true);
+          setTimeout(() => setCopiedNotification(false), 2000);
+        }
+      } catch (err) {
+        console.error('Fallback failed: ', err);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   // Filter ideas based on search search Query and Category Filter
   const filteredIdeas = ideas.filter(idea => {
     const matchesCategory = categoryFilter === 'semua' || idea.category === categoryFilter;
@@ -822,6 +926,7 @@ export default function App() {
               {[
                 { id: 'brainstorm', label: '10 Lomba Merdeka', icon: Lightbulb },
                 { id: 'plan', label: 'Blueprint Panitia 5 Orang', icon: Calendar },
+                { id: 'scores', label: 'Klasemen & Skor Tim', icon: Trophy },
                 { id: 'about', label: 'Filosofi Sinergi', icon: Heart },
               ].map((tab) => (
                 <button
@@ -871,6 +976,7 @@ export default function App() {
               {[
                 { id: 'brainstorm', label: '10 Lomba Merdeka', icon: Lightbulb },
                 { id: 'plan', label: 'Blueprint Panitia 5 Orang', icon: Calendar },
+                { id: 'scores', label: 'Klasemen & Skor Tim', icon: Trophy },
                 { id: 'about', label: 'Filosofi Sinergi', icon: Heart },
               ].map((tab) => (
                 <button
@@ -1290,6 +1396,217 @@ export default function App() {
                 </div>
               </div>
             </motion.div>
+          )}
+
+          {/* Scores & Leaderboard Section */}
+          {activeTab === 'scores' && (
+            <motion.div
+              key="scores"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="max-w-5xl mx-auto space-y-10"
+            >
+              <ScoresTabComponent
+                ideas={ideas}
+                TEAMS={TEAMS}
+                gameScores={gameScores}
+                updatePoints={updatePoints}
+                setGameScores={setGameScores}
+                INITIAL_SCORES={INITIAL_SCORES}
+                handleCopyScoresToClipboard={handleCopyScoresToClipboard}
+              />
+            </motion.div>
+          )}
+
+          {/* Scores & Leaderboard Section OLD_DISABLED - REVERTED */}
+          {false && activeTab === 'scores' && (
+            <div
+              key="scores"
+              className="max-w-5xl mx-auto space-y-10"
+            >
+              {/* Leaderboard Header */}
+              <div className="bg-white p-8 md:p-12 rounded-[2.5rem] border border-red-100 shadow-xl shadow-red-100/30 text-center relative overflow-hidden">
+                <div className="absolute -top-12 -left-12 w-48 h-48 bg-yellow-50 rounded-full blur-2xl"></div>
+                <div className="relative z-10 max-w-2xl mx-auto space-y-4">
+                  <div className="inline-flex p-4 bg-yellow-100 text-yellow-600 rounded-2xl">
+                    <Trophy className="w-8 h-8 animate-pulse" />
+                  </div>
+                  <h2 className="text-4xl font-display font-black text-gray-900 tracking-tight">Klasemen & Poin Sinergi Lomba</h2>
+                  <p className="text-gray-500 font-medium">
+                    Pantau akumulasi skor perjuangan gotong royong seluruh tim. Sesuaikan perolehan poin setiap perlombaan di bawah ini untuk melihat siapa tim terkuat!
+                  </p>
+                  
+                  {/* Share and Reset Leaderboard Actions */}
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyScoresToClipboard}
+                      className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-black text-xs md:text-sm px-5 py-3 rounded-xl shadow-md transition-all hover:-translate-y-0.5"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Bagikan Hasil Klasemen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm("Apakah Anda yakin ingin menyetel ulang seluruh skor tim ke nilai awal bawaan?")) {
+                          setGameScores(INITIAL_SCORES);
+                          localStorage.setItem('sinergi_merdeka_scores_v2', JSON.stringify(INITIAL_SCORES));
+                        }
+                      }}
+                      className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-xs md:text-sm px-5 py-3 rounded-xl transition-all"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Reset Semua Poin
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Accumulative standings row & Podium */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+                
+                {/* Visual Podium Graphic (Left/Middle Column) */}
+                <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-150 flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-center mb-6">
+                      <div className="text-left">
+                        <h3 className="text-lg font-display font-black text-gray-900">Podium Kemenangan Sementara</h3>
+                        <p className="text-xs text-gray-400 font-bold">Tim juara yang memimpin orkestrasi nilai luhur</p>
+                      </div>
+                      <span className="text-[10px] bg-yellow-50 text-yellow-700 px-3 py-1 rounded-full font-black border border-yellow-200 uppercase tracking-wider">
+                        Live Podium
+                      </span>
+                    </div>
+
+                    {/* 3D-Like Pure CSS Podium blocks */}
+                    <div className="flex items-end justify-center pt-8 pb-4 gap-2 sm:gap-4 h-56">
+                      
+                      {/* 2nd Place */}
+                      <div className="flex flex-col items-center w-24 sm:w-28 text-center flex-1">
+                        {null}
+                      </div>
+
+                      {/* 1st Place */}
+                      <div className="flex flex-col items-center w-24 sm:w-32 text-center flex-1">
+                        {null}
+                      </div>
+
+                      {/* 3rd Place */}
+                      <div className="flex flex-col items-center w-24 sm:w-28 text-center flex-1">
+                        {null}
+                      </div>
+
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50/70 p-4 rounded-2xl border border-yellow-100 flex items-start gap-3 mt-3">
+                    <span className="text-xl">💡</span>
+                    <div className="text-left font-sans">
+                      <p className="text-xs font-black text-yellow-900">Perhatikan Selisih Skor!</p>
+                      <p className="text-[11px] text-gray-650 leading-relaxed font-semibold">
+                        Setiap tim mengumpulkan poin lebih banyak dengan menjuarai kuis edukasi & tantangan fisik. Gotong royong dan ketangkasan adalah kunci mutlak kedaulatan tim agustusan.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Score Summary List View (Right Column) */}
+                <div className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-150 flex flex-col justify-between">
+                  <div className="space-y-4 text-left">
+                    <span className="text-[10px] uppercase font-extrabold tracking-widest text-gray-400 block mb-0.5">Klasemen Akumulatif</span>
+                    <h3 className="text-lg font-display font-black text-stone-900">Total Poin Sinergi</h3>
+                    <div className="space-y-4">
+                      {null}
+                    </div>
+                  </div>
+
+                  {/* Highlighting who is collecting more points */}
+                  <div className="bg-red-50/50 border border-red-105 p-4 rounded-2xl text-left mt-6">
+                    <span className="text-[9px] uppercase tracking-widest font-extrabold text-red-650 block mb-1">
+                      🏆 Pemenang Saat Ini
+                    </span>
+                    <p className="text-xs font-bold text-stone-900 leading-normal font-sans">
+                      Tim terunggul di wilayah RW 08 ditentukan dari akumulasi skor di papan skor utama. Gotong royong terbukti mengukir prestasi gemilang! 💪
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Point management per individual competition catalog */}
+              <div className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-150 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
+                  <div>
+                    <h3 className="text-lg font-display font-black text-stone-900">Perincian & Edit Poin Berdasarkan Lomba</h3>
+                    <p className="text-xs text-gray-400 font-bold font-sans">Sesuaikan atau tambahkan poin tim di setiap bidang lomba</p>
+                  </div>
+                </div>
+
+                {/* Competition scoring editor grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {null && ideas.map((game) => {
+                    return (
+                      <div key={game.title} className="bg-[#faf8f5] p-5 rounded-2xl border border-gray-250 text-left space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                              game.category === 'anak-anak' ? 'bg-yellow-105 text-yellow-800 border border-yellow-200/50' : 'bg-blue-105 text-blue-800 border border-blue-200/50'
+                            }`}>
+                              {game.category === 'anak-anak' ? 'Anak' : 'Remaja'}
+                            </span>
+                            <h4 className="text-sm font-black text-gray-900 mt-1.5 line-clamp-1">{game.title}</h4>
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-400 shrink-0">{game.teamSizeRange}</span>
+                        </div>
+
+                        {/* Standings layout inside a specific game */}
+                        <div className="space-y-2">
+                          {TEAMS.map((team) => {
+                            const score = (gameScores[game.title] || {})[team.id] || 0;
+                            return (
+                              <div key={team.id} className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-gray-150">
+                                <span className="text-xs font-bold text-stone-850 flex items-center gap-1.5">
+                                  <span>{team.icon}</span>
+                                  {team.name.split(' ')[1]}
+                                </span>
+                                
+                                <div className="flex items-center gap-2">
+                                  {/* Point score badge */}
+                                  <span className="font-mono text-xs font-black text-stone-900 w-12 text-center bg-gray-50 py-1 rounded-md border border-gray-200">
+                                    {score}
+                                  </span>
+
+                                  {/* Update actions */}
+                                  <div className="flex p-0.5 bg-gray-100 rounded-lg">
+                                    <button
+                                      type="button"
+                                      onClick={() => updatePoints(game.title, team.id, -5)}
+                                      className="w-6 h-6 flex items-center justify-center text-[10px] font-extrabold text-gray-500 hover:bg-white rounded transition-colors"
+                                      title="Kurangi 5 poin"
+                                    >
+                                      -
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => updatePoints(game.title, team.id, 5)}
+                                      className="w-6 h-6 flex items-center justify-center text-[9px] font-extrabold text-red-650 hover:bg-white rounded transition-colors"
+                                      title="Tambah 5 poin"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Philosophy Section */}
